@@ -158,7 +158,7 @@ int main(int, char **) {
     glm::int32 scalar{1};
     glm::vec3 translation{0.0f};
     glm::float32 z_near{0.1};
-    glm::float32 z_far{1024.0};
+    glm::float32 z_far{100.0};
     glm::float32 rotation{0};
 
     IMGUI_CHECKVERSION();
@@ -185,8 +185,8 @@ int main(int, char **) {
         ImGui::SliderFloat3("Translation Vector", glm::value_ptr(translation), -5, 5);
         ImGui::SliderFloat("Rotation", &rotation, 0, glm::tau<glm::f32>());
 
-        ImGui::SliderFloat("zNear:", &z_near, 0, 1);
-        ImGui::SliderFloat("zFar:", &z_far, 0, 3000);
+        ImGui::SliderFloat("zNear:", &z_near, 0, 100);
+        ImGui::SliderFloat("zFar:", &z_far, 0, 100);
 
         ImGui::Checkbox("Draw Shape?", &foo);
         ImGui::Checkbox("Update Uniform?", &uniform);
