@@ -26,6 +26,11 @@ include_directories(lib/imgui)
 file(GLOB LIB_FILES "lib/imgui/*.cpp" "lib/imgui/backends/imgui_impl_opengl3.cpp" "lib/imgui/backends/imgui_impl_glfw.cpp")
 list(APPEND SOURCE_FILES ${LIB_FILES})
 
+# Include STB (My Image Loader) Need to switch to FreeImage
+include_directories(lib/stb)
+
+
+
 add_executable(${CMAKE_PROJECT_NAME} ${SOURCE_FILES})
 
 # Linking GLFW, GLM and OpenGL
