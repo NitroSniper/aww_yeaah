@@ -20,24 +20,28 @@
 #include <glm/gtc/type_ptr.hpp>
 
 struct Vertex {
-    glm::vec2 position;
+    glm::vec3 position;
     glm::vec3 color;
     glm::vec2 tex_coords;
 };
 
 const std::string &vertexShaderSource = R"(
     #version 460 core
-    layout (location = 0) in vec2 position;
+    layout (location = 0) in vec3 position;
     layout (location = 1) in vec3 color;
     layout (location = 2) in vec2 tex_coords;
 
-    uniform vec2 x;
+    uniform mat4 model;
+    uniform mat4 proj;
+    uniform mat4 view;
+
     uniform int scale;
+
     out vec3 frag_color;
     out vec2 tex_coord;
     
     void main() {
-        gl_Position = vec4(position + x, 0.0, 1.0);
+        gl_Position = proj * view * model * vec4(position, 1.0);
         frag_color = color;
         tex_coord = tex_coords * scale;
     }
@@ -92,7 +96,7 @@ int main(int, char **) {
         std::cerr << "Couldn't load OpenGL" << std::endl;
         return EXIT_FAILURE;
     }
-    // glEnable(GL_FRAMEBUFFER_SRGB); Gamma correction
+
 
     int OpenGLVersion[2];
     glGetIntegerv(GL_MAJOR_VERSION, &OpenGLVersion[0]);
@@ -100,25 +104,28 @@ int main(int, char **) {
     std::cout << "OpenGL Version: " << OpenGLVersion[0] << '.' << OpenGLVersion[1] << std::endl;
     Program program = Program(window, vertexShaderSource, fragmentShaderSource);
 
-    Vertex vertex1{{-0.5, -0.5},
+    Vertex vertex1{{-0.5, 0.0, 0.5},
                    {1,    0, 0},
                    {0,    0}};
-    Vertex vertex2{{-0.5, 0.5},
+    Vertex vertex2{{-0.5, 0.0, -0.5},
                    {0,    1, 0},
-                   {0,    1}};
-    Vertex vertex3{{0.5, -0.5},
+                   {5,    0}};
+    Vertex vertex3{{0.5, 0.0, -0.5},
                    {0,   0, 1},
-                   {1,   0}};
-    Vertex vertex4{{0.5, 0.5},
+                   {0,   0}};
+    Vertex vertex4{{0.5, 0.0, 0.5},
                    {1,   1, 1},
-                   {1,   1}};
+                   {5,   0}};
+    Vertex vertex5{{0.0, 0.8, 0.0},
+                   {0.83,    0.70, 0.44},
+                   {2.5,   2.5}};
 
-    std::vector shape{vertex1, vertex2, vertex3, vertex4};
-    Vertex shape2[]{vertex1, vertex2, vertex3, vertex4};
-    GLuint indices[]{0, 1, 2, 1, 2, 3};
+    std::vector shape{vertex1, vertex2, vertex3, vertex4, vertex5};
+    Vertex shape2[]{vertex1, vertex2, vertex3, vertex4, vertex5};
+    GLuint indices[]{0, 1, 2, 0, 2, 3, 0, 1, 4, 1, 2, 4, 2, 3, 4, 3, 0, 4};
 
     Attribute attributes[] = {{1, offsetof(Vertex, color),      {GL_FLOAT, 3}},
-                              {0, offsetof(Vertex, position),   {GL_FLOAT, 2}},
+                              {0, offsetof(Vertex, position),   {GL_FLOAT, 3}},
                               {2, offsetof(Vertex, tex_coords), {GL_FLOAT, 2}}};
 
     VertexBuffer<Vertex> v_buffer{shape};
@@ -126,23 +133,33 @@ int main(int, char **) {
     VertexArray VAO{v_buffer, i_buffer, attributes};
 
     glm::vec2 x{1.0f, 1.0f};
-    GLint x_location = glGetUniformLocation(program, "x");
-    GLint tex_location = glGetUniformLocation(program, "tex");
-    GLint scale_location = glGetUniformLocation(program, "scale");
 
     stbi_set_flip_vertically_on_load(true);
     Texture tex{"assets/pop_cat.png"};
     glBindTextureUnit(0, tex);
+
 
     auto resizing = [](GLFWwindow *window, int width, int height) {
         glViewport(0, 0, width, height);
     };
     glfwSetFramebufferSizeCallback(window, resizing);
 
+    GLint tex_location = glGetUniformLocation(program, "tex");
+    GLint scale_location = glGetUniformLocation(program, "scale");
+    GLint model_location = glGetUniformLocation(program, "model");
+    GLint proj_location = glGetUniformLocation(program, "proj");
+    GLint view_location = glGetUniformLocation(program, "view");
+
+
+
     glm::float32 t{0};
     bool foo = true;
     bool uniform = true;
     glm::int32 scalar{1};
+    glm::vec3 translation{0.0f};
+    glm::float32 z_near{0.1};
+    glm::float32 z_far{1024.0};
+    glm::float32 rotation{0};
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
@@ -154,6 +171,9 @@ int main(int, char **) {
 
     glm::vec4 bg{0.0f};
 
+    // glEnable(GL_FRAMEBUFFER_SRGB); Gamma correction
+    glEnable(GL_DEPTH_TEST);
+    glUseProgram(program);
     while (!glfwWindowShouldClose(window)) {
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
@@ -162,6 +182,11 @@ int main(int, char **) {
         ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
         ImGui::SliderFloat("Value: t", &t, 0, glm::tau<glm::f32>());
         ImGui::SliderInt("Texture Scale", &scalar, 1, 10);
+        ImGui::SliderFloat3("Translation Vector", glm::value_ptr(translation), -5, 5);
+        ImGui::SliderFloat("Rotation", &rotation, 0, glm::tau<glm::f32>());
+
+        ImGui::SliderFloat("zNear:", &z_near, 0, 1);
+        ImGui::SliderFloat("zFar:", &z_far, 0, 3000);
 
         ImGui::Checkbox("Draw Shape?", &foo);
         ImGui::Checkbox("Update Uniform?", &uniform);
@@ -170,20 +195,29 @@ int main(int, char **) {
         x.x = glm::sin(5 * t);
         x.y = glm::sin(3 * t);
 
-        glClear(GL_COLOR_BUFFER_BIT);
-        glClearColor(bg[0], bg[1], bg[2], bg[3]);
-        if (foo) {
-            glUseProgram(program);
+        glm::mat4 model{1.0f};
+        glm::mat4 view{1.0f};
+        glm::mat4 proj{1.0f}; // THE PERSPECTIVE MATRIX (╯°□°）╯︵ ┻━┻
+        view = glm::translate(view, translation);
+        proj = glm::perspective(glm::radians(45.0f), 800.0f/800.0f, z_near, z_far);
+        model = glm::rotate(model, rotation, glm::vec3(0.0, 1.0f, 0.0f));
 
-            if (uniform) {
-                glUniform2fv(x_location, 1, glm::value_ptr(x *= 0.5));
-                glUniform1i(tex_location, 0);
-                glUniform1i(scale_location, scalar);
-            }
+
+        // Drawing
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        glClearColor(bg[0], bg[1], bg[2], bg[3]);
+        if (uniform) {
+            glUniform1i(tex_location, 0);
+            glUniform1i(scale_location, scalar);
+            glUniformMatrix4fv(model_location, 1, GL_FALSE, glm::value_ptr(model));
+            glUniformMatrix4fv(proj_location, 1, GL_FALSE, glm::value_ptr(proj));
+            glUniformMatrix4fv(view_location, 1, GL_FALSE, glm::value_ptr(view));
+        }
+        if (foo) {
 
             glBindVertexArray(VAO); // seeing as we only have a single VAO there's no
             // need to bind it
-            glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
+            glDrawElements(GL_TRIANGLES, sizeof(indices) / sizeof(GLuint), GL_UNSIGNED_INT, nullptr);
         }
 
         ImGui::Render();
