@@ -28,7 +28,7 @@ list(APPEND SOURCE_FILES ${LIB_FILES})
 
 # Include STB (My Image Loader) Need to switch to FreeImage
 include_directories(lib/stb)
-
+file(COPY assets DESTINATION ${CMAKE_BINARY_DIR})
 
 
 add_executable(${CMAKE_PROJECT_NAME} ${SOURCE_FILES})

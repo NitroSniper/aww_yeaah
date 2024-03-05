@@ -1,12 +1,14 @@
 //
 // Created by mahie on 23/02/2024.
 //
-#include <glad/glad.h>
-#include <GLFW/glfw3.h>
-#include <string>
+
 
 #ifndef OPENGLTEMPL_PROGRAM_H
 #define OPENGLTEMPL_PROGRAM_H
+
+#include <glad/glad.h>
+#include <GLFW/glfw3.h>
+#include <string>
 
 struct Diagnostic {
     int success;

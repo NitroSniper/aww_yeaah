@@ -2,12 +2,11 @@
 // Created by mahie on 01/03/2024.
 //
 
-#include <span>
-#include <glad/glad.h>
-
 #ifndef OPENGLTEMPL_VERTEXBUFFER_H
 #define OPENGLTEMPL_VERTEXBUFFER_H
 
+#include <span>
+#include <glad/glad.h>
 
 template<typename T>
 class VertexBuffer {

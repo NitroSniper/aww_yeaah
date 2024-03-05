@@ -2,15 +2,15 @@
 // Created by mahie on 01/03/2024.
 //
 
+#ifndef OPENGLTEMPL_VERTEXARRAY_H
+#define OPENGLTEMPL_VERTEXARRAY_H
+
 #include <glad/glad.h>
 
 #include "IndexBuffer.h"
 #include "VertexBuffer.h"
 
 #include <utility>
-
-#ifndef OPENGLTEMPL_VERTEXARRAY_H
-#define OPENGLTEMPL_VERTEXARRAY_H
 
 struct Attribute {
   GLuint attrib_index;
