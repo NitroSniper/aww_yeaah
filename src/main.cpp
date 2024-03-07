@@ -1,5 +1,5 @@
 // Copyright 2024 <Mahie Miah>
-
+#define GLM_ENABLE_EXPERIMENTAL
 #include <backends/imgui_impl_glfw.h>
 #include <backends/imgui_impl_opengl3.h>
 #include <glad/glad.h>
@@ -148,7 +148,7 @@ int main(int, char **) {
   glm::float32 z_near{0.1};
   glm::float32 z_far{100};
   glm::float32 rotation{0};
-  glm::vec4 bg{0.0f};
+  glm::vec4 bg{3.0/255, 0, 11.0/255, 0};
   glm::float32 fov{45};
 
   Camera camera(width, height, glm::vec3(0.0f, 0.5f, 2.0f));

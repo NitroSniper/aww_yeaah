@@ -15,7 +15,7 @@
 struct Attribute {
   GLuint attrib_index;
   size_t offset;
-  std::pair<GLenum, GLuint> type_size;
+  std::pair<GLenum, GLint> type_size;
 };
 
 template <typename T, typename V> class VertexArray {
