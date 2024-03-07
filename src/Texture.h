@@ -15,7 +15,7 @@ private:
     int width, height, numColChannel;
     GLuint id_;
 public:
-    explicit Texture(const std::string &path);
+    explicit Texture(const std::string &path, GLenum tex_type);
 
     virtual ~Texture();
 
