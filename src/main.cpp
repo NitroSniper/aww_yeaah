@@ -69,15 +69,24 @@ const std::string &fragmentShaderSource = R"(
     uniform vec4 light_color;
     uniform vec3 light_pos;
     uniform vec3 camera_pos;
+    
+    // lighting function
+    uniform float a;
+    uniform float b;
 
     out vec4 color;
 
-    void main() {
+
+    vec4 point_light() {
+        vec3 lightVec = light_pos - crntPos;
+        float dist = length(lightVec);
+
+        float inten = 1 / ((a * dist + b) * dist + 1);
+
         float ambient = 0.2;
 
-
         vec3 normal = normalize(Normal);
-        vec3 light_direction = normalize(light_pos - crntPos);
+        vec3 light_direction = normalize(lightVec);
 
         float diffuse = max(dot(normal, light_direction), 0);
 
@@ -87,7 +96,55 @@ const std::string &fragmentShaderSource = R"(
         float spec_amount = pow(max(dot(view_direction, reflection), 0), 8);
         float specular = spec_light * spec_amount;
 
-        color = texture(tex0, tex_coord) * light_color * (diffuse + ambient) + texture(tex1, tex_coord).r * specular;
+        return (texture(tex0, tex_coord) * (diffuse * inten + ambient) + texture(tex1, tex_coord).r * specular*inten) * light_color;
+    }
+
+    vec4 direct_light() {
+        vec3 lightVec = vec3(1, 1, 0);
+
+        float ambient = 0.2;
+
+        vec3 normal = normalize(Normal);
+        vec3 light_direction = normalize(lightVec);
+        float diffuse = max(dot(normal, light_direction), 0);
+
+        float spec_light = 0.5;
+        vec3 view_direction = normalize(camera_pos - crntPos);
+        vec3 reflection = reflect(-light_direction, normal);
+        float spec_amount = pow(max(dot(view_direction, reflection), 0), 8);
+        float specular = spec_light * spec_amount;
+
+        return (texture(tex0, tex_coord) * (diffuse + ambient) + texture(tex1, tex_coord).r * specular) * light_color;
+    }
+
+    vec4 spot_light() {
+        float innerCone = a;
+        float outerCone = b;
+
+
+        vec3 lightVec = light_pos - crntPos;
+
+        float ambient = 0.2;
+
+        vec3 normal = normalize(Normal);
+        vec3 light_direction = normalize(lightVec);
+
+        float diffuse = max(dot(normal, light_direction), 0);
+
+        float spec_light = 0.5;
+        vec3 view_direction = normalize(camera_pos - crntPos);
+        vec3 reflection = reflect(-light_direction, normal);
+        float spec_amount = pow(max(dot(view_direction, reflection), 0), 8);
+        float specular = spec_light * spec_amount;
+
+        float angle = dot(vec3(0, -1, 0), -light_direction);
+        float inten = clamp((angle - outerCone)/(innerCone - outerCone), 0, 1);
+
+        return (texture(tex0, tex_coord) * (diffuse * inten + ambient) + texture(tex1, tex_coord).r * specular * inten) * light_color;
+    }
+
+    void main() {
+        color = spot_light();
     }
 )";
 
@@ -204,6 +261,8 @@ int main(int, char **) {
   glm::float32 rotation{0};
   glm::vec4 bg{3.0 / 255, 0, 11.0 / 255, 0};
   glm::int32 fov{45};
+  glm::float32 a{3};
+  glm::float32 b{0.7};
 
   Vertex2 lightVertices[] = {//     COORDINATES     //
                              {{-0.1f, -0.1f, 0.1f}}, {{-0.1f, -0.1f, -0.1f}},
@@ -244,7 +303,7 @@ int main(int, char **) {
                 1000.0f / io.Framerate, io.Framerate);
     ImGui::SliderInt("Tex Scale", &scalar, 1, 10);
     ImGui::SliderInt("Fov", &fov, 1, 180);
-    ImGui::SliderFloat3("Camera Pos", glm::value_ptr(camera.position), -5, 5);
+    ImGui::SliderFloat3("Light Pos", glm::value_ptr(light_pos), -5, 5);
     ImGui::Checkbox("Rotate?", &rotate);
     ImGui::SliderFloat("Angle", &rotation, 0, glm::tau<glm::f32>());
     t += 0.005;
@@ -256,6 +315,8 @@ int main(int, char **) {
     ImGui::Checkbox("Update Uniform?", &uniform);
     ImGui::ColorPicker4("Background Color: ", glm::value_ptr(bg),
                         ImGuiColorEditFlags_PickerHueWheel);
+    ImGui::SliderFloat("Light: Param A", &a, 0, 3);
+    ImGui::SliderFloat("Light: Param B", &b, 0, 3);
 
     // Create and update model
     glm::mat4 model{1.0f};
@@ -276,13 +337,16 @@ int main(int, char **) {
       glBindVertexArray(VAO); // seeing as we only have a single VAO there's
       // no need to bind it
       glUniform1i(tex_location, 0);
-      glUniform1i(glGetUniformLocation(program, "spec_map"), 1);
+      glUniform1i(glGetUniformLocation(program, "tex1"), 1);
       glUniform1i(scale_location, scalar);
       glUniformMatrix4fv(model_location, 1, GL_FALSE, glm::value_ptr(model));
       glUniform4fv(glGetUniformLocation(program, "light_color"), 1,
                    glm::value_ptr(light_color));
       glUniform3fv(glGetUniformLocation(program, "light_pos"), 1,
                    glm::value_ptr(light_pos));
+      
+      glUniform1f(glGetUniformLocation(program, "a"), a);
+      glUniform1f(glGetUniformLocation(program, "b"), b);
 
       glUniform3fv(glGetUniformLocation(program, "camera_pos"), 1,
                    glm::value_ptr(camera.position));
