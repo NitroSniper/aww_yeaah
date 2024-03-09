@@ -5,6 +5,7 @@
 #ifndef OPENGLTEMPL_VERTEXARRAY_H
 #define OPENGLTEMPL_VERTEXARRAY_H
 
+#include <cstddef>
 #include <glad/glad.h>
 
 #include "IndexBuffer.h"
@@ -18,13 +19,13 @@ struct Attribute {
   std::pair<GLenum, GLint> type_size;
 };
 
-template <typename T, typename V> class VertexArray {
+template <typename T, typename U> class VertexArray {
 private:
   GLuint id_{};
 
 public:
-  VertexArray(VertexBuffer<T> vbo, IndexBuffer<V> ibo,
-              std::span<Attribute> attribs) {
+  VertexArray(VertexBuffer<T> vbo, IndexBuffer<U> ibo,
+              std::span<Attribute> attribs, size_t stride) {
     glCreateVertexArrays(1, &id_);
 
     for (int i = 0; i < attribs.size(); ++i) {
@@ -36,7 +37,7 @@ public:
                                 GL_FALSE, attrib.offset);
     }
 
-    glVertexArrayVertexBuffer(id_, 0, vbo, 0, sizeof(T));
+    glVertexArrayVertexBuffer(id_, 0, vbo, 0, stride);
     glVertexArrayElementBuffer(id_, ibo);
   }
   ~VertexArray() { glDeleteVertexArrays(1, &id_); }

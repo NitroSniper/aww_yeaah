@@ -64,7 +64,8 @@ const std::string &fragmentShaderSource = R"(
     in vec3 Normal;
     in vec3 crntPos;
 
-    uniform sampler2D tex;
+    uniform sampler2D tex0;
+    uniform sampler2D tex1;
     uniform vec4 light_color;
     uniform vec3 light_pos;
     uniform vec3 camera_pos;
@@ -86,7 +87,7 @@ const std::string &fragmentShaderSource = R"(
         float spec_amount = pow(max(dot(view_direction, reflection), 0), 8);
         float specular = spec_light * spec_amount;
 
-        color = texture(tex, tex_coord) * light_color * (diffuse + ambient + specular);
+        color = texture(tex0, tex_coord) * light_color * (diffuse + ambient) + texture(tex1, tex_coord).r * specular;
     }
 )";
 
@@ -158,61 +159,30 @@ int main(int, char **) {
             << std::endl;
   Program program = Program(window, vertexShaderSource, fragmentShaderSource);
   Program light_program = Program(window, light_vert, light_frag);
+  GLfloat vertices[] = {
+      //     COORDINATES     /        COLORS        /    TexCoord    / NORMALS
+      //     //
+      -1.0f, 0.0f, 1.0f,  0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f,
+      -1.0f, 0.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f,
+      1.0f,  0.0f, -1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f, 0.0f,
+      1.0f,  0.0f, 1.0f,  0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f};
+  GLuint indices[] = {0, 1, 2, 0, 2, 3};
+  Attribute attributes[] = {{0, 0, {GL_FLOAT, 3}},
+                            {1, sizeof(GLfloat) * 3, {GL_FLOAT, 3}},
+                            {2, sizeof(GLfloat) * 6, {GL_FLOAT, 2}},
+                            {3, sizeof(GLfloat) * 8, {GL_FLOAT, 3}}};
 
-  // Bottom side
-  Vertex vertex1{{-0.5, 0.0, 0.5}, {1, 0, 0}, {0, 0}, {0, -1, 0}};
-  Vertex vertex2{{-0.5, 0.0, -0.5}, {0, 1, 0}, {0, 5}, {0, -1, 0}};
-  Vertex vertex3{{0.5, 0.0, -0.5}, {0, 0, 1}, {5, 5}, {0, -1, 0}};
-  Vertex vertex4{{0.5, 0.0, 0.5}, {1, 1, 1}, {5, 0}, {0, -1, 0}};
-
-  // Left Side
-  Vertex vertex5{{-0.5, 0.0, 0.5}, {1, 0, 0}, {0, 0}, {-0.8, 0.5, 0}};
-  Vertex vertex6{{-0.5, 0.0, -0.5}, {0, 1, 0}, {5, 0}, {-0.8, 0.5, 0}};
-  Vertex vertex7{{0.0, 0.8, 0.0}, {0.83, 0.70, 0.44}, {2.5, 5}, {-0.8, 0.5, 0}};
-
-  // Non Facing Side
-  Vertex vertex8{{-0.5, 0.0, -0.5}, {0, 1, 0}, {5, 0}, {0, 0.5, -0.8}};
-  Vertex vertex9{{0.5, 0.0, -0.5}, {0, 0, 1}, {0, 0}, {0, 0.5, -0.8}};
-  Vertex vertex10{
-      {0.0, 0.8, 0.0}, {0.83, 0.70, 0.44}, {2.5, 5}, {0, 0.5, -0.8}};
-
-  // Right Side
-  Vertex vertex11{{0.5, 0.0, -0.5}, {0, 0, 1}, {0, 0}, {0.8, 0.5, 0}};
-  Vertex vertex12{{0.5, 0.0, 0.5}, {1, 1, 1}, {5, 0}, {0.8, 0.5, 0}};
-  Vertex vertex13{{0.0, 0.8, 0.0}, {0.83, 0.70, 0.44}, {2.5, 5}, {0.8, 0.5, 0}};
-
-  // Non Facing Side
-  Vertex vertex14{{0.5, 0.0, 0.5}, {1, 1, 1}, {5, 0}, {0, 0.5, 0.8}};
-  Vertex vertex15{{-0.5, 0.0, 0.5}, {1, 0, 0}, {0, 0}, {0, 0.5, 0.8}};
-  Vertex vertex16{{0.0, 0.8, 0.0}, {0.83, 0.70, 0.44}, {2.5, 5}, {0, 0.5, 0.8}};
-
-  std::vector shape{vertex1,  vertex2,  vertex3,  vertex4,  vertex5,  vertex6,
-                    vertex7,  vertex8,  vertex9,  vertex10, vertex11, vertex12,
-                    vertex13, vertex14, vertex15, vertex16};
-  // Vertex shape2[]{vertex1, vertex2, vertex3, vertex4, vertex5};
-  GLuint indices[]{
-      0,  1,  2,  // Bottom side
-      0,  2,  3,  // Bottom side
-      4,  6,  5,  // Left side
-      7,  9,  8,  // Non-facing side
-      10, 12, 11, // Right side
-      13, 15, 14  // Facing side
-  };
-
-  Attribute attributes[] = {{1, offsetof(Vertex, color), {GL_FLOAT, 3}},
-                            {0, offsetof(Vertex, position), {GL_FLOAT, 3}},
-                            {2, offsetof(Vertex, tex_coords), {GL_FLOAT, 2}},
-                            {3, offsetof(Vertex, normal), {GL_FLOAT, 3}}};
-
-  VertexBuffer<Vertex> v_buffer{shape};
+  VertexBuffer<GLfloat> v_buffer{vertices};
   IndexBuffer<GLuint> i_buffer{indices};
-  VertexArray VAO{v_buffer, i_buffer, attributes};
+  VertexArray VAO{v_buffer, i_buffer, attributes, sizeof(GLfloat) * 11};
 
   glm::vec2 x{1.0f, 1.0f};
 
   stbi_set_flip_vertically_on_load(true);
-  Texture tex{"assets/pop_cat.png", GL_RGBA};
+  Texture tex{"assets/planks.png", GL_RGBA};
+  Texture tex_spec{"assets/planksSpec.png", GL_RED};
   glBindTextureUnit(0, tex);
+  glBindTextureUnit(1, tex_spec);
 
   auto resizing = [](GLFWwindow *window, int width, int height) {
     glViewport(0, 0, width, height);
@@ -248,7 +218,10 @@ int main(int, char **) {
   Attribute light_attr[] = {{0, offsetof(Vertex2, position), {GL_FLOAT, 3}}};
   VertexBuffer<Vertex2> light_vertices{lightVertices};
   IndexBuffer<GLuint> light_indices{lightIndices};
-  VertexArray light_vao{light_vertices, light_indices, light_attr};
+  VertexArray light_vao{light_vertices, light_indices, light_attr,
+                        sizeof(Vertex2)};
+  glm::vec4 light_color{1.0f, 1.0f, 1.0f, 1.0f};
+  glm::vec3 light_pos = glm::vec3(0.5, 0.5, 0.5);
 
   Camera camera(width, height, glm::vec3(0.0f, 0.5f, 2.0f));
 
@@ -284,12 +257,9 @@ int main(int, char **) {
     ImGui::ColorPicker4("Background Color: ", glm::value_ptr(bg),
                         ImGuiColorEditFlags_PickerHueWheel);
 
-    glm::vec4 light_color{1.0f, 0.0f, 0.0f, 1.0f};
-
     // Create and update model
     glm::mat4 model{1.0f};
     glm::mat4 light_model{1.0f};
-    glm::vec3 light_pos = glm::vec3(0.5, 0.5, 0.5);
     model = glm::rotate(model, rotation, glm::vec3(0.0, 1.0f, 0.0f));
     light_model = glm::translate(light_model, light_pos);
     light_model =
@@ -306,6 +276,7 @@ int main(int, char **) {
       glBindVertexArray(VAO); // seeing as we only have a single VAO there's
       // no need to bind it
       glUniform1i(tex_location, 0);
+      glUniform1i(glGetUniformLocation(program, "spec_map"), 1);
       glUniform1i(scale_location, scalar);
       glUniformMatrix4fv(model_location, 1, GL_FALSE, glm::value_ptr(model));
       glUniform4fv(glGetUniformLocation(program, "light_color"), 1,
