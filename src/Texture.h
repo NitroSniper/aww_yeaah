@@ -5,22 +5,26 @@
 #ifndef OPENGLTEMPL_TEXTURE_H
 #define OPENGLTEMPL_TEXTURE_H
 
-
-#include <string>
-#include <stb_image.h>
 #include <glad/glad.h>
+#include <stb_image.h>
+#include <string>
 
 class Texture {
 private:
-    int width, height, numColChannel;
-    GLuint id_;
+  int width, height, numColChannel;
+  GLuint id_;
+
 public:
-    explicit Texture(const std::string &path, GLenum tex_type);
+  enum class TextureType { DIFFUSE, SPECULAR };
+  TextureType type;
 
-    virtual ~Texture();
+  explicit Texture(const std::string &path, GLenum format,
+                   TextureType tex_type);
 
-    operator GLuint() const;
+  virtual ~Texture();
+  void bind(GLuint unit);
+
+  operator GLuint() const;
 };
 
-
-#endif //OPENGLTEMPL_TEXTURE_H
+#endif // OPENGLTEMPL_TEXTURE_H

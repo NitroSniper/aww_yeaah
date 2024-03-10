@@ -4,6 +4,7 @@
 
 #ifndef OPENGLTEMPL_CAMERA_H
 #define OPENGLTEMPL_CAMERA_H
+#define GLM_ENABLE_EXPERIMENTAL
 
 #include <glad/glad.h>
 
@@ -43,7 +44,7 @@ public:
         fov_rad, static_cast<float>(width) / height, z_near, z_far);
     camera_matrix = proj * view;
   }
-  void uniform(const Program &program, const std::string &uniform) {
+  void uniform(const Program &program, const std::string &uniform) const {
     glUniformMatrix4fv(glGetUniformLocation(program, uniform.c_str()), 1,
                        GL_FALSE, glm::value_ptr(camera_matrix));
   }

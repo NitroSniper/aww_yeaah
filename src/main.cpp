@@ -64,8 +64,8 @@ const std::string &fragmentShaderSource = R"(
     in vec3 Normal;
     in vec3 crntPos;
 
-    uniform sampler2D tex0;
-    uniform sampler2D tex1;
+    uniform sampler2D diff_0;
+    uniform sampler2D spec_0;
     uniform vec4 light_color;
     uniform vec3 light_pos;
     uniform vec3 camera_pos;
@@ -96,55 +96,55 @@ const std::string &fragmentShaderSource = R"(
         float spec_amount = pow(max(dot(view_direction, reflection), 0), 8);
         float specular = spec_light * spec_amount;
 
-        return (texture(tex0, tex_coord) * (diffuse * inten + ambient) + texture(tex1, tex_coord).r * specular*inten) * light_color;
+        return (texture(diff_0, tex_coord) * (diffuse * inten + ambient) + texture(spec_0, tex_coord).r * specular*inten) * light_color;
     }
 
-    vec4 direct_light() {
-        vec3 lightVec = vec3(1, 1, 0);
-
-        float ambient = 0.2;
-
-        vec3 normal = normalize(Normal);
-        vec3 light_direction = normalize(lightVec);
-        float diffuse = max(dot(normal, light_direction), 0);
-
-        float spec_light = 0.5;
-        vec3 view_direction = normalize(camera_pos - crntPos);
-        vec3 reflection = reflect(-light_direction, normal);
-        float spec_amount = pow(max(dot(view_direction, reflection), 0), 8);
-        float specular = spec_light * spec_amount;
-
-        return (texture(tex0, tex_coord) * (diffuse + ambient) + texture(tex1, tex_coord).r * specular) * light_color;
-    }
-
-    vec4 spot_light() {
-        float innerCone = a;
-        float outerCone = b;
-
-
-        vec3 lightVec = light_pos - crntPos;
-
-        float ambient = 0.2;
-
-        vec3 normal = normalize(Normal);
-        vec3 light_direction = normalize(lightVec);
-
-        float diffuse = max(dot(normal, light_direction), 0);
-
-        float spec_light = 0.5;
-        vec3 view_direction = normalize(camera_pos - crntPos);
-        vec3 reflection = reflect(-light_direction, normal);
-        float spec_amount = pow(max(dot(view_direction, reflection), 0), 8);
-        float specular = spec_light * spec_amount;
-
-        float angle = dot(vec3(0, -1, 0), -light_direction);
-        float inten = clamp((angle - outerCone)/(innerCone - outerCone), 0, 1);
-
-        return (texture(tex0, tex_coord) * (diffuse * inten + ambient) + texture(tex1, tex_coord).r * specular * inten) * light_color;
-    }
+//    vec4 direct_light() {
+//        vec3 lightVec = vec3(1, 1, 0);
+//
+//        float ambient = 0.2;
+//
+//        vec3 normal = normalize(Normal);
+//        vec3 light_direction = normalize(lightVec);
+//        float diffuse = max(dot(normal, light_direction), 0);
+//
+//        float spec_light = 0.5;
+//        vec3 view_direction = normalize(camera_pos - crntPos);
+//        vec3 reflection = reflect(-light_direction, normal);
+//        float spec_amount = pow(max(dot(view_direction, reflection), 0), 8);
+//        float specular = spec_light * spec_amount;
+//
+//        return (texture(diff0, tex_coord) * (diffuse + ambient) + texture(spec0, tex_coord).r * specular) * light_color;
+//    }
+//
+//    vec4 spot_light() {
+//        float innerCone = a;
+//        float outerCone = b;
+//
+//
+//        vec3 lightVec = light_pos - crntPos;
+//
+//        float ambient = 0.2;
+//
+//        vec3 normal = normalize(Normal);
+//        vec3 light_direction = normalize(lightVec);
+//
+//        float diffuse = max(dot(normal, light_direction), 0);
+//
+//        float spec_light = 0.5;
+//        vec3 view_direction = normalize(camera_pos - crntPos);
+//        vec3 reflection = reflect(-light_direction, normal);
+//        float spec_amount = pow(max(dot(view_direction, reflection), 0), 8);
+//        float specular = spec_light * spec_amount;
+//
+//        float angle = dot(vec3(0, -1, 0), -light_direction);
+//        float inten = clamp((angle - outerCone)/(innerCone - outerCone), 0, 1);
+//
+//        return (texture(diff0, tex_coord) * (diffuse * inten + ambient) + texture(spec0, tex_coord).r * specular * inten) * light_color;
+//    }
 
     void main() {
-        color = spot_light();
+        color = point_light();
     }
 )";
 
@@ -228,18 +228,17 @@ int main(int, char **) {
                             {1, sizeof(GLfloat) * 3, {GL_FLOAT, 3}},
                             {2, sizeof(GLfloat) * 6, {GL_FLOAT, 2}},
                             {3, sizeof(GLfloat) * 8, {GL_FLOAT, 3}}};
+  Texture tex0{"assets/planks.png", GL_RGBA, Texture::TextureType::DIFFUSE};
+  Texture tex1{"assets/planksSpec.png", GL_RED, Texture::TextureType::SPECULAR};
+  Texture textures[]{tex0, tex1};
 
-  VertexBuffer<GLfloat> v_buffer{vertices};
+  VertexBuffer<GLfloat> v_buffer{vertices, sizeof(GLfloat) * 11};
   IndexBuffer<GLuint> i_buffer{indices};
-  VertexArray VAO{v_buffer, i_buffer, attributes, sizeof(GLfloat) * 11};
+  VertexArray floor{v_buffer, i_buffer, attributes, textures};
 
   glm::vec2 x{1.0f, 1.0f};
 
   stbi_set_flip_vertically_on_load(true);
-  Texture tex{"assets/planks.png", GL_RGBA};
-  Texture tex_spec{"assets/planksSpec.png", GL_RED};
-  glBindTextureUnit(0, tex);
-  glBindTextureUnit(1, tex_spec);
 
   auto resizing = [](GLFWwindow *window, int width, int height) {
     glViewport(0, 0, width, height);
@@ -275,10 +274,9 @@ int main(int, char **) {
                            1, 5, 4, 1, 4, 0, 4, 5, 6, 4, 6, 7};
 
   Attribute light_attr[] = {{0, offsetof(Vertex2, position), {GL_FLOAT, 3}}};
-  VertexBuffer<Vertex2> light_vertices{lightVertices};
+  VertexBuffer<Vertex2> light_vertices{lightVertices, sizeof(Vertex2)};
   IndexBuffer<GLuint> light_indices{lightIndices};
-  VertexArray light_vao{light_vertices, light_indices, light_attr,
-                        sizeof(Vertex2)};
+  VertexArray light_cube{light_vertices, light_indices, light_attr, {}};
   glm::vec4 light_color{1.0f, 1.0f, 1.0f, 1.0f};
   glm::vec3 light_pos = glm::vec3(0.5, 0.5, 0.5);
 
@@ -333,38 +331,29 @@ int main(int, char **) {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glClearColor(bg[0], bg[1], bg[2], bg[3]);
     if (foo) {
-      glUseProgram(program);
-      glBindVertexArray(VAO); // seeing as we only have a single VAO there's
-      // no need to bind it
-      glUniform1i(tex_location, 0);
-      glUniform1i(glGetUniformLocation(program, "tex1"), 1);
       glUniform1i(scale_location, scalar);
       glUniformMatrix4fv(model_location, 1, GL_FALSE, glm::value_ptr(model));
       glUniform4fv(glGetUniformLocation(program, "light_color"), 1,
                    glm::value_ptr(light_color));
       glUniform3fv(glGetUniformLocation(program, "light_pos"), 1,
                    glm::value_ptr(light_pos));
-      
+
       glUniform1f(glGetUniformLocation(program, "a"), a);
       glUniform1f(glGetUniformLocation(program, "b"), b);
 
       glUniform3fv(glGetUniformLocation(program, "camera_pos"), 1,
                    glm::value_ptr(camera.position));
-      camera.uniform(program, "camera");
-      glDrawElements(GL_TRIANGLES, sizeof(indices) / sizeof(GLuint),
-                     GL_UNSIGNED_INT, nullptr);
+      floor.draw(program, camera);
 
-      glClearError();
-      glUseProgram(light_program);
+
+
+      /*
       glUniformMatrix4fv(lmodel_location, 1, GL_FALSE,
                          glm::value_ptr(light_model));
-      camera.uniform(light_program, "camera");
       glUniform4fv(glGetUniformLocation(light_program, "in_color"), 1,
                    glm::value_ptr(light_color));
-      glBindVertexArray(
-          light_vao); // seeing as we only have a single VAO there's no
-      glDrawElements(GL_TRIANGLES, sizeof(lightIndices) / sizeof(GLuint),
-                     GL_UNSIGNED_INT, nullptr);
+      light_cube.draw(light_program, camera);
+      */
     }
 
     ImGui::Render();

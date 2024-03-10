@@ -8,9 +8,14 @@
 #include <cstddef>
 #include <glad/glad.h>
 
+#include "Camera.h"
 #include "IndexBuffer.h"
+#include "Program.h"
+#include "Texture.h"
 #include "VertexBuffer.h"
 
+#include <iostream>
+#include <string>
 #include <utility>
 
 struct Attribute {
@@ -19,13 +24,21 @@ struct Attribute {
   std::pair<GLenum, GLint> type_size;
 };
 
+static void glClearError2() {
+  while (glGetError()) {
+  }
+}
+
 template <typename T, typename U> class VertexArray {
 private:
   GLuint id_{};
+  std::span<Texture> textures;
+  IndexBuffer<U> ibo_;
 
 public:
   VertexArray(VertexBuffer<T> vbo, IndexBuffer<U> ibo,
-              std::span<Attribute> attribs, size_t stride) {
+              std::span<Attribute> attribs, std::span<Texture> tex)
+      : textures(tex), ibo_(ibo) {
     glCreateVertexArrays(1, &id_);
 
     for (int i = 0; i < attribs.size(); ++i) {
@@ -37,10 +50,37 @@ public:
                                 GL_FALSE, attrib.offset);
     }
 
-    glVertexArrayVertexBuffer(id_, 0, vbo, 0, stride);
-    glVertexArrayElementBuffer(id_, ibo);
+    glVertexArrayVertexBuffer(id_, 0, vbo, 0, vbo.stride);
+    glVertexArrayElementBuffer(id_, ibo_);
   }
   ~VertexArray() { glDeleteVertexArrays(1, &id_); }
+
+  void draw(const Program &program, const Camera &camera) {
+    glUseProgram(program);
+    GLuint diff_i{0};
+    GLuint spec_i{0};
+
+    // for (int i = 0; i < textures.size(); ++i) {
+    //}
+      int i = 0;
+      Texture tex = textures[i];
+      std::string tex_name;
+      switch (tex.type) {
+      case Texture::TextureType::DIFFUSE:
+        tex_name = "diff_" + std::to_string(diff_i++);
+        break;
+      case Texture::TextureType::SPECULAR:
+        tex_name = "spec_" + std::to_string(spec_i++);
+        break;
+      }
+      tex.bind(0);
+      glUniform1i(glGetUniformLocation(program, tex_name.c_str()), i);
+      std::cout << "Binded " << i << ' ' << tex_name.c_str() << '\n';
+
+    camera.uniform(program, "camera");
+    glBindVertexArray(id_);
+    glDrawElements(GL_TRIANGLES, ibo_.get_size(), GL_UNSIGNED_INT, nullptr);
+  }
   operator GLuint() const { return id_; }
 };
 
