@@ -19,12 +19,27 @@ public:
   TextureType type;
 
   explicit Texture(const std::string &path, GLenum format,
-                   TextureType tex_type);
+                   TextureType tex_type)     : type(tex_type) {
+    stbi_uc *bytes = stbi_load(path.c_str(), &width, &height, &numColChannel, 0);
+    glCreateTextures(GL_TEXTURE_2D, 1, &id_);
 
-  virtual ~Texture();
-  void bind(GLuint unit);
+    glTextureParameteri(id_, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTextureParameteri(id_, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTextureParameteri(id_, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTextureParameteri(id_, GL_TEXTURE_WRAP_T, GL_REPEAT);
 
-  operator GLuint() const;
+    glTextureStorage2D(id_, 1, GL_RGBA8, width, height);
+    glTextureSubImage2D(id_, 0, 0, 0, width, height, format, GL_UNSIGNED_BYTE,
+                        bytes);
+    // RGB for jpeg, RGBA for png
+    glGenerateTextureMipmap(id_);
+    stbi_image_free(bytes);
+  };
+
+  virtual ~Texture() { glDeleteTextures(1, &id_); } ;
+  void bind(GLuint unit) const { glBindTextureUnit(unit, id_); };
+
+  operator GLuint() const { return id_; };
 };
 
 #endif // OPENGLTEMPL_TEXTURE_H

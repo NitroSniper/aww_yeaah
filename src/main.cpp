@@ -1,5 +1,6 @@
 // Copyright 2024 <Mahie Miah>
 #define GLM_ENABLE_EXPERIMENTAL
+
 #include <backends/imgui_impl_glfw.h>
 #include <backends/imgui_impl_opengl3.h>
 #include <glad/glad.h>
@@ -22,13 +23,13 @@
 #include <glm/gtc/type_ptr.hpp>
 
 struct Vertex {
-  glm::vec3 position;
-  glm::vec3 color;
-  glm::vec2 tex_coords;
-  glm::vec3 normal;
+    glm::vec3 position;
+    glm::vec3 color;
+    glm::vec2 tex_coords;
+    glm::vec3 normal;
 };
 struct Vertex2 {
-  glm::vec3 position;
+    glm::vec3 position;
 };
 
 const std::string &vertexShaderSource = R"(
@@ -182,7 +183,8 @@ static void glCheckError() {
   }
 }
 
-struct Triangle {};
+struct Triangle {
+};
 
 constexpr GLint width = 1920;
 constexpr GLint height = 1080;
@@ -194,17 +196,16 @@ int main(int, char **) {
   }
 
   auto cleanup = []() {
-    glfwTerminate();
-    std::cout << "GLFW has terminated." << std::endl;
+      glfwTerminate();
+      std::cout << "GLFW has terminated." << std::endl;
   };
   std::atexit(cleanup);
 
-  auto window{
-      glfwCreateWindow(width, height, "I am a Window", nullptr, nullptr)};
+  auto window{glfwCreateWindow(width, height, "I am a Window", nullptr, nullptr)};
   glfwMakeContextCurrent(window);
 
   // Check if glad is loaded
-  if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
+  if (!gladLoadGLLoader((GLADloadproc) glfwGetProcAddress)) {
     std::cerr << "Couldn't load OpenGL" << std::endl;
     return EXIT_FAILURE;
   }
@@ -212,19 +213,22 @@ int main(int, char **) {
   int OpenGLVersion[2];
   glGetIntegerv(GL_MAJOR_VERSION, &OpenGLVersion[0]);
   glGetIntegerv(GL_MINOR_VERSION, &OpenGLVersion[1]);
-  std::cout << "OpenGL Version: " << OpenGLVersion[0] << '.' << OpenGLVersion[1]
-            << std::endl;
+
+  std::cout << "OpenGL Version: " << OpenGLVersion[0] << '.' << OpenGLVersion[1] << std::endl;
+  stbi_set_flip_vertically_on_load(true);
+
   Program program = Program(window, vertexShaderSource, fragmentShaderSource);
   Program light_program = Program(window, light_vert, light_frag);
+
+
   GLfloat vertices[] = {
-      //     COORDINATES     /        COLORS        /    TexCoord    / NORMALS
-      //     //
-      -1.0f, 0.0f, 1.0f,  0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f,
-      -1.0f, 0.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f,
-      1.0f,  0.0f, -1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f, 0.0f,
-      1.0f,  0.0f, 1.0f,  0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f};
+          //     COORDINATES     /        COLORS        /    TexCoord    / NORMALS
+          //     //
+          -1.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, -1.0f, 0.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.0f,
+          1.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f, -1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f, 1.0f,
+          0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f};
   GLuint indices[] = {0, 1, 2, 0, 2, 3};
-  Attribute attributes[] = {{0, 0, {GL_FLOAT, 3}},
+  Attribute attributes[] = {{0, 0,                   {GL_FLOAT, 3}},
                             {1, sizeof(GLfloat) * 3, {GL_FLOAT, 3}},
                             {2, sizeof(GLfloat) * 6, {GL_FLOAT, 2}},
                             {3, sizeof(GLfloat) * 8, {GL_FLOAT, 3}}};
@@ -236,42 +240,19 @@ int main(int, char **) {
   IndexBuffer<GLuint> i_buffer{indices};
   VertexArray floor{v_buffer, i_buffer, attributes, textures};
 
-  glm::vec2 x{1.0f, 1.0f};
-
-  stbi_set_flip_vertically_on_load(true);
-
-  auto resizing = [](GLFWwindow *window, int width, int height) {
-    glViewport(0, 0, width, height);
-  };
-  glfwSetFramebufferSizeCallback(window, resizing);
-
-  GLint tex_location = glGetUniformLocation(program, "tex");
-  GLint scale_location = glGetUniformLocation(program, "scale");
-  GLint model_location = glGetUniformLocation(program, "model");
-  GLint lmodel_location = glGetUniformLocation(light_program, "model");
-
-  bool foo = true;
-  bool uniform = true;
-  bool rotate = true;
-  glm::float32 t{};
-  glm::int32 scalar{1};
-  glm::float32 z_near{0.1};
-  glm::float32 z_far{100};
-  glm::float32 rotation{0};
-  glm::vec4 bg{3.0 / 255, 0, 11.0 / 255, 0};
-  glm::int32 fov{45};
-  glm::float32 a{3};
-  glm::float32 b{0.7};
 
   Vertex2 lightVertices[] = {//     COORDINATES     //
-                             {{-0.1f, -0.1f, 0.1f}}, {{-0.1f, -0.1f, -0.1f}},
-                             {{0.1f, -0.1f, -0.1f}}, {{0.1f, -0.1f, 0.1f}},
-                             {{-0.1f, 0.1f, 0.1f}},  {{-0.1f, 0.1f, -0.1f}},
-                             {{0.1f, 0.1f, -0.1f}},  {{0.1f, 0.1f, 0.1f}}};
+          {{-0.1f, -0.1f, 0.1f}},
+          {{-0.1f, -0.1f, -0.1f}},
+          {{0.1f,  -0.1f, -0.1f}},
+          {{0.1f,  -0.1f, 0.1f}},
+          {{-0.1f, 0.1f,  0.1f}},
+          {{-0.1f, 0.1f,  -0.1f}},
+          {{0.1f,  0.1f,  -0.1f}},
+          {{0.1f,  0.1f,  0.1f}}};
 
-  GLuint lightIndices[] = {0, 1, 2, 0, 2, 3, 0, 4, 7, 0, 7, 3,
-                           3, 7, 6, 3, 6, 2, 2, 6, 5, 2, 5, 1,
-                           1, 5, 4, 1, 4, 0, 4, 5, 6, 4, 6, 7};
+  GLuint lightIndices[] = {0, 1, 2, 0, 2, 3, 0, 4, 7, 0, 7, 3, 3, 7, 6, 3, 6, 2, 2, 6, 5, 2, 5, 1, 1, 5, 4, 1, 4, 0, 4,
+                           5, 6, 4, 6, 7};
 
   Attribute light_attr[] = {{0, offsetof(Vertex2, position), {GL_FLOAT, 3}}};
   VertexBuffer<Vertex2> light_vertices{lightVertices, sizeof(Vertex2)};
@@ -282,6 +263,30 @@ int main(int, char **) {
 
   Camera camera(width, height, glm::vec3(0.0f, 0.5f, 2.0f));
 
+
+  auto resizing = [](GLFWwindow *window, int width, int height) {
+      glViewport(0, 0, width, height);
+  };
+  glfwSetFramebufferSizeCallback(window, resizing);
+
+  bool foo = true;
+  bool uniform = true;
+  bool rotate = true;
+  glm::float32 t{};
+  glm::int32 scalar{1};
+  glm::float32 z_near{0.1};
+  glm::float32 z_far{100};
+  glm::float32 rotation{0};
+  glm::vec4 bg{0};
+  glm::int32 fov{45};
+  glm::float32 a{3};
+  glm::float32 b{0.7};
+
+  GLint tex_location = glGetUniformLocation(program, "tex");
+  GLint scale_location = glGetUniformLocation(program, "scale");
+  GLint model_location = glGetUniformLocation(program, "model");
+  GLint lmodel_location = glGetUniformLocation(light_program, "model");
+
   IMGUI_CHECKVERSION();
   ImGui::CreateContext();
   ImGuiIO &io = ImGui::GetIO();
@@ -289,7 +294,7 @@ int main(int, char **) {
   ImGui::StyleColorsDark();
   ImGui_ImplGlfw_InitForOpenGL(window, true);
   ImGui_ImplOpenGL3_Init("#version 460");
-  // glEnable(GL_FRAMEBUFFER_SRGB); Gamma correction
+  // glEnable(GL_FRAMEBUFFER_SRGB); // Gamma correction
   glEnable(GL_DEPTH_TEST);
   while (!glfwWindowShouldClose(window)) {
     // Create Imgui
@@ -297,8 +302,7 @@ int main(int, char **) {
     ImGui_ImplGlfw_NewFrame();
 
     ImGui::NewFrame();
-    ImGui::Text("Application average %.3f ms/frame (%.1f FPS)",
-                1000.0f / io.Framerate, io.Framerate);
+    ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
     ImGui::SliderInt("Tex Scale", &scalar, 1, 10);
     ImGui::SliderInt("Fov", &fov, 1, 180);
     ImGui::SliderFloat3("Light Pos", glm::value_ptr(light_pos), -5, 5);
@@ -311,8 +315,7 @@ int main(int, char **) {
 
     ImGui::Checkbox("Draw Shape?", &foo);
     ImGui::Checkbox("Update Uniform?", &uniform);
-    ImGui::ColorPicker4("Background Color: ", glm::value_ptr(bg),
-                        ImGuiColorEditFlags_PickerHueWheel);
+    ImGui::ColorPicker4("Background Color: ", glm::value_ptr(bg), ImGuiColorEditFlags_PickerHueWheel);
     ImGui::SliderFloat("Light: Param A", &a, 0, 3);
     ImGui::SliderFloat("Light: Param B", &b, 0, 3);
 
@@ -321,8 +324,7 @@ int main(int, char **) {
     glm::mat4 light_model{1.0f};
     model = glm::rotate(model, rotation, glm::vec3(0.0, 1.0f, 0.0f));
     light_model = glm::translate(light_model, light_pos);
-    light_model =
-        glm::rotate(light_model, rotation, glm::vec3(0.0, 1.0f, 0.0f));
+    light_model = glm::rotate(light_model, rotation, glm::vec3(0.0, 1.0f, 0.0f));
 
     camera.update_matrix(glm::radians(static_cast<float>(fov)), z_near, z_far);
     camera.inputs(window);
@@ -331,29 +333,21 @@ int main(int, char **) {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glClearColor(bg[0], bg[1], bg[2], bg[3]);
     if (foo) {
+      glUseProgram(program);
       glUniform1i(scale_location, scalar);
       glUniformMatrix4fv(model_location, 1, GL_FALSE, glm::value_ptr(model));
-      glUniform4fv(glGetUniformLocation(program, "light_color"), 1,
-                   glm::value_ptr(light_color));
-      glUniform3fv(glGetUniformLocation(program, "light_pos"), 1,
-                   glm::value_ptr(light_pos));
-
+      glUniform4fv(glGetUniformLocation(program, "light_color"), 1, glm::value_ptr(light_color));
+      glUniform3fv(glGetUniformLocation(program, "light_pos"), 1, glm::value_ptr(light_pos));
       glUniform1f(glGetUniformLocation(program, "a"), a);
       glUniform1f(glGetUniformLocation(program, "b"), b);
-
-      glUniform3fv(glGetUniformLocation(program, "camera_pos"), 1,
-                   glm::value_ptr(camera.position));
+      glUniform3fv(glGetUniformLocation(program, "camera_pos"), 1, glm::value_ptr(camera.position));
       floor.draw(program, camera);
 
 
-
-      /*
-      glUniformMatrix4fv(lmodel_location, 1, GL_FALSE,
-                         glm::value_ptr(light_model));
-      glUniform4fv(glGetUniformLocation(light_program, "in_color"), 1,
-                   glm::value_ptr(light_color));
+      glUseProgram(light_program);
+      glUniformMatrix4fv(glGetUniformLocation(light_program, "model"), 1, GL_FALSE, glm::value_ptr(light_model));
+      glUniform4fv(glGetUniformLocation(light_program, "in_color"), 1, glm::value_ptr(light_color));
       light_cube.draw(light_program, camera);
-      */
     }
 
     ImGui::Render();
